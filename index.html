@@ -884,78 +884,30 @@ function isToday(d) {
   return d.getFullYear()===t.getFullYear()&&d.getMonth()===t.getMonth()&&d.getDate()===t.getDate();
 }
 
-/* ── 공휴일 (공공데이터포털 한국천문연구원 특일정보) ── */
-const HOLIDAY_API_KEY = '7d0ef2a2aba35b3a627c4511a4303c310ed726e264e6d498ee64fdcb34411b43';
-const HOLIDAY_LS_PREFIX = 'holidays_v4_';
-const HOLIDAY_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7일
-
+/* ── 공휴일 (holidays.json — GitHub Actions 자동 갱신) ── */
 // 메모리 캐시: { year: Set<'YYYY-MM-DD'> }
 const holidayMemCache = {};
+let holidayJsonCache = null;
 
-async function fetchHolidayMonth(year, month) {
-  const mm = String(month).padStart(2, '0');
-  const url = `https://apis.data.go.kr/B090041/openapi/service/SpcdeInfoService/getRestDeInfo`
-    + `?serviceKey=${HOLIDAY_API_KEY}&solYear=${year}&solMonth=${mm}&numOfRows=20`;
+async function loadHolidayJson() {
+  if (holidayJsonCache) return holidayJsonCache;
   try {
-    const res = await fetch(url);
-    if (!res.ok) return [];
-    const text = await res.text();
-    const parser = new DOMParser();
-    const xml = parser.parseFromString(text, 'text/xml');
-    const items = xml.querySelectorAll('item');
-    const result = [];
-    items.forEach(item => {
-      const isHoliday = item.querySelector('isHoliday')?.textContent;
-      const locdate = item.querySelector('locdate')?.textContent;
-      if (isHoliday === 'Y' && locdate) result.push(locdate);
-    });
-    return result;
+    const res = await fetch('./holidays.json?v=' + (Math.floor(Date.now() / 86400000)));
+    if (!res.ok) throw new Error('holidays.json ' + res.status);
+    holidayJsonCache = await res.json();
+    return holidayJsonCache;
   } catch(e) {
-    return [];
+    console.warn('holidays.json 로드 실패:', e);
+    return {};
   }
-}
-
-async function fetchHolidaysFromAPI(year) {
-  // 12개월 병렬 fetch
-  const months = Array.from({length:12}, (_,i) => i+1);
-  const results = await Promise.all(months.map(m => fetchHolidayMonth(year, m)));
-  const dates = new Set();
-  results.flat().forEach(locdate => {
-    // locdate: '20260101' → '2026-01-01'
-    const s = String(locdate);
-    if (s.length === 8) {
-      dates.add(`${s.slice(0,4)}-${s.slice(4,6)}-${s.slice(6,8)}`);
-    }
-  });
-  return dates;
 }
 
 async function getHolidays(year) {
-  // 1. 메모리 캐시
   if (holidayMemCache[year]) return holidayMemCache[year];
-  // 2. localStorage 캐시 (7일 TTL)
-  const lsKey = HOLIDAY_LS_PREFIX + year;
-  try {
-    const stored = localStorage.getItem(lsKey);
-    if (stored) {
-      const { dates, savedAt } = JSON.parse(stored);
-      if (Date.now() - savedAt < HOLIDAY_TTL_MS) {
-        const s = new Set(dates);
-        holidayMemCache[year] = s;
-        return s;
-      }
-    }
-  } catch(e) {}
-  // 3. API fetch
-  try {
-    const dates = await fetchHolidaysFromAPI(year);
-    localStorage.setItem(lsKey, JSON.stringify({ dates: [...dates], savedAt: Date.now() }));
-    holidayMemCache[year] = dates;
-    return dates;
-  } catch(e) {
-    console.warn('공휴일 fetch 실패:', e);
-    return new Set();
-  }
+  const data = await loadHolidayJson();
+  const dates = new Set(data[String(year)] || []);
+  holidayMemCache[year] = dates;
+  return dates;
 }
 
 async function isHoliday(dateObj) {
@@ -963,17 +915,12 @@ async function isHoliday(dateObj) {
   return holidays.has(dateKey(dateObj));
 }
 
-// 이전 버전 캐시 정리 (holidays_ 로 시작하는 키 중 현재 버전 아닌 것 삭제)
+// localStorage 구버전 캐시 정리
 (function cleanOldHolidayCache() {
   Object.keys(localStorage).forEach(key => {
-    if (key.startsWith('holidays_') && !key.startsWith(HOLIDAY_LS_PREFIX)) {
-      localStorage.removeItem(key);
-    }
+    if (key.startsWith('holidays_')) localStorage.removeItem(key);
   });
 })();
-
-// 앱 시작 시 올해 공휴일 미리 fetch
-getHolidays(new Date().getFullYear()).catch(() => {});
 
 /* ── 로딩 ── */
 function showLoading() { document.getElementById('loading-bar').classList.add('show'); }
