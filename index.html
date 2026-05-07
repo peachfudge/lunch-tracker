@@ -86,6 +86,17 @@
     content: ''; position: absolute; top: 5px; right: calc(50% - 10px);
     width: 5px; height: 5px; background: var(--accent); border-radius: 50%;
   }
+  /* ── 공휴일 색상 ── */
+  .day-tab.is-holiday { color: #E05A5A; }
+  .day-tab.is-holiday .dd { color: #E89090; }
+  .day-tab.is-holiday.active { border-bottom-color: #E05A5A; color: #E05A5A; }
+  .day-tab.is-holiday.active .dd { color: #E89090; }
+  .day-tab.is-holiday.is-today::after { background: #E05A5A; }
+  .week-day-badge.is-holiday .dn { color: #E05A5A; }
+  .week-day-badge.is-holiday .dd { color: #E89090; }
+  .today-row .week-day-badge.is-holiday { background: #E05A5A; }
+  .today-row .week-day-badge.is-holiday .dn { color: #fff; }
+  .today-row .week-day-badge.is-holiday .dd { color: rgba(255,255,255,0.85); }
 
 
   /* ── CONTENT ── */
@@ -873,6 +884,89 @@ function isToday(d) {
   return d.getFullYear()===t.getFullYear()&&d.getMonth()===t.getMonth()&&d.getDate()===t.getDate();
 }
 
+/* ── 공휴일 (Google Calendar) ── */
+const HOLIDAY_API_KEY = 'AIzaSyCY77aHfleXZuo0MtSa5Yo3XqOTfP1VK4c';
+const HOLIDAY_CAL_ID = 'ko.south_korea#holiday@group.v.calendar.google.com';
+const HOLIDAY_LS_PREFIX = 'holidays_v1_';
+const HOLIDAY_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7일
+
+// 메모리 캐시: { year: Set<'YYYY-MM-DD'> }
+const holidayMemCache = {};
+
+// 어버이날 등 기념일(공휴일 아닌 날) 제외 목록
+const HOLIDAY_EXCLUDE_NAMES = new Set([
+  '어버이날', '스승의날', '납세자의 날', '소비자의 날',
+  '방재의 날', '환경의 날', '정보통신의 날',
+  '육군의 날', '해군의 날', '공군의 날',
+]);
+
+async function fetchHolidaysFromAPI(year) {
+  const timeMin = `${year}-01-01T00:00:00Z`;
+  const timeMax = `${year}-12-31T23:59:59Z`;
+  const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(HOLIDAY_CAL_ID)}/events`
+    + `?key=${HOLIDAY_API_KEY}&timeMin=${timeMin}&timeMax=${timeMax}&singleEvents=true&maxResults=200`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('Holiday API ' + res.status);
+  const data = await res.json();
+  const dates = new Set();
+  (data.items || []).forEach(item => {
+    const name = (item.summary || '').trim();
+    if (HOLIDAY_EXCLUDE_NAMES.has(name)) return;
+    const startDate = item.start?.date;
+    const endDate = item.end?.date;
+    if (!startDate) return;
+    // 멀티데이 이벤트 처리 (추석/설날 연휴 등)
+    // Google Calendar에서 end.date는 마지막날 다음날이므로 -1일 처리
+    if (endDate && endDate > startDate) {
+      const cur = new Date(startDate + 'T00:00:00');
+      const end = new Date(endDate + 'T00:00:00');
+      while (cur < end) {
+        dates.add(cur.toISOString().slice(0, 10));
+        cur.setDate(cur.getDate() + 1);
+      }
+    } else {
+      dates.add(startDate);
+    }
+  });
+  return dates;
+}
+
+async function getHolidays(year) {
+  // 1. 메모리 캐시
+  if (holidayMemCache[year]) return holidayMemCache[year];
+  // 2. localStorage 캐시 (7일 TTL)
+  const lsKey = HOLIDAY_LS_PREFIX + year;
+  try {
+    const stored = localStorage.getItem(lsKey);
+    if (stored) {
+      const { dates, savedAt } = JSON.parse(stored);
+      if (Date.now() - savedAt < HOLIDAY_TTL_MS) {
+        const s = new Set(dates);
+        holidayMemCache[year] = s;
+        return s;
+      }
+    }
+  } catch(e) {}
+  // 3. API fetch
+  try {
+    const dates = await fetchHolidaysFromAPI(year);
+    localStorage.setItem(lsKey, JSON.stringify({ dates: [...dates], savedAt: Date.now() }));
+    holidayMemCache[year] = dates;
+    return dates;
+  } catch(e) {
+    console.warn('공휴일 fetch 실패:', e);
+    return new Set();
+  }
+}
+
+async function isHoliday(dateObj) {
+  const holidays = await getHolidays(dateObj.getFullYear());
+  return holidays.has(dateKey(dateObj));
+}
+
+// 앱 시작 시 올해 공휴일 미리 fetch
+getHolidays(new Date().getFullYear()).catch(() => {});
+
 /* ── 로딩 ── */
 function showLoading() { document.getElementById('loading-bar').classList.add('show'); }
 function hideLoading() { document.getElementById('loading-bar').classList.remove('show'); }
@@ -907,12 +1001,20 @@ async function renderTabs() {
   const dates = getWeekDates(weekOffset);
   const cont = document.getElementById('day-tabs');
   cont.innerHTML = '';
-  const menus = await Promise.all(dates.map(d => getMenu(dateKey(d))));
+  const [menus, holidayFlags] = await Promise.all([
+    Promise.all(dates.map(d => getMenu(dateKey(d)))),
+    Promise.all(dates.map(d => isHoliday(d))),
+  ]);
   dates.forEach((d,i) => {
     const menu = menus[i];
     const hasMenu = ALL_CATS.some(c => menu[c.key] && menu[c.key].trim());
+    const holiday = holidayFlags[i];
     const btn = document.createElement('button');
-    btn.className = 'day-tab'+(i===selectedDayOffset?' active':'')+(isToday(d)?' is-today':'')+(hasMenu?' has-data':'');
+    btn.className = 'day-tab'
+      + (i===selectedDayOffset?' active':'')
+      + (isToday(d)?' is-today':'')
+      + (hasMenu?' has-data':'')
+      + (holiday?' is-holiday':'');
     btn.innerHTML = `<span class="dn">${DAYS[d.getDay()]}</span><span class="dd">${d.getMonth()+1}/${d.getDate()}</span>`;
     btn.onclick = () => { selectedDayOffset=i; currentView==='week'?setView('day'):render(); };
     cont.appendChild(btn);
@@ -942,14 +1044,19 @@ async function renderWeekView(cont) {
   cont.innerHTML = '';
   const wrap = document.createElement('div');
   wrap.className = 'week-view';
-  const menus = await Promise.all(dates.map(d => getMenu(dateKey(d))));
+  const [menus, holidayFlags] = await Promise.all([
+    Promise.all(dates.map(d => getMenu(dateKey(d)))),
+    Promise.all(dates.map(d => isHoliday(d))),
+  ]);
   dates.forEach((d, i) => {
     const menu = menus[i];
     const today = isToday(d);
+    const holiday = holidayFlags[i];
     const row = document.createElement('div');
     row.className = 'week-row'+(today?' today-row':'');
+    const badgeClass = 'week-day-badge' + (holiday?' is-holiday':'');
     const header = `<div class="week-row-header">
-      <div class="week-day-badge">
+      <div class="${badgeClass}">
         <span class="dn">${DAYS[d.getDay()]}</span>
         <span class="dd">${d.getMonth()+1}/${d.getDate()}</span>
       </div>
