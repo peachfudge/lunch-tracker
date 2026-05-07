@@ -6,6 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="theme-color" content="#EEF5FB">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <title>오늘의 점심은 뭘까?</title>
 
 <style>
@@ -224,7 +225,7 @@
   /* ── FOOTER ── */
   .footer-hint { display: flex; align-items: center; justify-content: center; gap: 5px; color: var(--muted2); font-size: 11px; padding: 6px 0 2px; }
   .footer-hint svg { width: 12px; height: 12px; stroke: var(--muted2); }
-  .footer-credit { text-align: left; color: var(--muted2); font-size: 10px; padding: 2px 16px 12px; }
+  .footer-credit { text-align: left; color: var(--muted2); font-size: 10px; padding: 2px 16px 2px; }
 
   /* ── 비번 모달 ── */
   .pw-modal-body { padding: 20px 20px 24px; }
@@ -312,7 +313,7 @@
         </svg>
       </div>
       <div class="text">
-        <h1>이번주 점심</h1>
+        <h1>오늘의 점심</h1>
         <p id="week-range">—</p>
       </div>
     </div>
@@ -345,7 +346,8 @@
   </svg>
   항목을 탭하면 편집할 수 있어요
 </div>
-<div class="footer-credit" id="footer-credit">만든이 : 나리나리</div>
+<div class="footer-credit" id="footer-credit">만든이 : @peachfudge</div>
+<div class="footer-credit" style="font-size:9px;padding-bottom:12px;"><a href="https://www.flaticon.com/kr/free-icons/-" title="포크 접시 스푼 아이콘" style="color:var(--muted2);text-decoration:none;">포크 접시 스푼 아이콘 제작자: swaggyicon - Flaticon</a></div>
 
 <!-- AI Import FAB (편집 모드에서만 표시) -->
 <button class="ai-fab" id="ai-fab" onclick="openAiModal()" title="AI 메뉴 자동 입력" style="display:none;">
