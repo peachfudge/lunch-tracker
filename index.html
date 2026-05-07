@@ -339,6 +339,22 @@
 
 <div class="content" id="content"></div>
 
+<!-- 앱 설치 버튼 -->
+<div id="install-btn-wrap" style="display:none; padding: 0 14px 16px;">
+  <button id="install-btn" onclick="triggerInstall()"
+    style="width:100%; padding:14px; background:var(--accent); border:none; border-radius:var(--radius-sm);
+           color:#fff; font-size:15px; font-weight:700; font-family:inherit; cursor:pointer;
+           box-shadow:0 3px 12px rgba(74,159,212,0.30); transition:background 0.15s; display:flex;
+           align-items:center; justify-content:center; gap:8px;">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+      <polyline points="7 10 12 15 17 10"/>
+      <line x1="12" y1="15" x2="12" y2="3"/>
+    </svg>
+    앱 설치하기
+  </button>
+</div>
+
 <div class="footer-hint" id="footer-hint" style="display:none;">
   <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
     <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
@@ -353,7 +369,6 @@
   </div>
   <div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px;">
     <button class="version-btn" style="text-align:right;font-weight:700;color:var(--accent);" onclick="openVersionModal()">사용 방법 · 패치노트</button>
-    <button class="install-btn" id="install-btn" style="text-align:right;font-weight:700;" onclick="triggerInstall()">앱 설치하기</button>
     <button class="version-btn" style="text-align:right;font-weight:700;color:var(--accent);" onclick="openInstallModal()">홈 화면에 추가 방법</button>
   </div>
 </div>
@@ -1424,14 +1439,18 @@ let deferredPrompt;
 window.addEventListener('beforeinstallprompt', (e) => {
   e.preventDefault();
   deferredPrompt = e;
-  const btn = document.getElementById('install-btn');
-  if (btn) btn.style.display = 'block';
+  const wrap = document.getElementById('install-btn-wrap');
+  if (wrap) wrap.style.display = 'block';
 });
 
 function triggerInstall() {
   if (deferredPrompt) {
     deferredPrompt.prompt();
-    deferredPrompt.userChoice.then(() => { deferredPrompt = null; });
+    deferredPrompt.userChoice.then(() => {
+      deferredPrompt = null;
+      const wrap = document.getElementById('install-btn-wrap');
+      if (wrap) wrap.style.display = 'none';
+    });
   }
 }
 
