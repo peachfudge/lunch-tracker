@@ -892,7 +892,7 @@ let holidayJsonCache = null;
 async function loadHolidayJson() {
   if (holidayJsonCache) return holidayJsonCache;
   try {
-    const res = await fetch('./holidays.json?v=' + (Math.floor(Date.now() / 86400000)));
+    const res = await fetch('./holidays.json');
     if (!res.ok) throw new Error('holidays.json ' + res.status);
     holidayJsonCache = await res.json();
     return holidayJsonCache;
