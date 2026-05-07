@@ -62,6 +62,16 @@
   .nav-btn:active { background: var(--accent); }
   .nav-btn:active svg { stroke: #fff !important; }
   .nav-btn svg { width: 13px; height: 13px; stroke: var(--accent); }
+  .refresh-btn {
+    width: 28px; height: 28px; background: var(--card); border: 1px solid var(--border);
+    border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center;
+    box-shadow: var(--shadow); transition: all 0.12s; flex-shrink: 0;
+  }
+  .refresh-btn:active { background: var(--accent); }
+  .refresh-btn:active svg { stroke: #fff !important; }
+  .refresh-btn svg { width: 13px; height: 13px; stroke: var(--accent); transition: transform 0.4s; }
+  .refresh-btn.spinning svg { animation: spin-once 0.5s ease-out; }
+  @keyframes spin-once { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
   .week-label { font-size: 10px; font-weight: 700; color: var(--muted); min-width: 44px; text-align: center; }
   .view-toggle { display: flex; background: var(--card); border: 1px solid var(--border); border-radius: 20px; padding: 3px; box-shadow: var(--shadow); flex-shrink: 0; }
   .view-btn { padding: 4px 10px; border: none; border-radius: 16px; font-size: 11px; font-weight: 700; cursor: pointer; background: none; color: var(--muted); font-family: inherit; transition: all 0.15s; }
@@ -341,7 +351,12 @@
         <button class="view-btn" id="btn-week" onclick="setView('week')">주간</button>
         <button class="view-btn" id="btn-day"  onclick="setView('day')">일간</button>
       </div>
-
+      <button class="refresh-btn" id="refresh-btn" onclick="handleRefresh()" title="새로고침">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="23 4 23 10 17 10"/>
+          <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+        </svg>
+      </button>
     </div>
   </div>
   <div class="day-tabs" id="day-tabs"></div>
@@ -1470,6 +1485,37 @@ async function confirmReset() {
   closeReset(); showLoading();
   await deleteWeekMenus(dates);
   await render();
+}
+
+/* ── REFRESH ── */
+function handleRefresh() {
+  const btn = document.getElementById('refresh-btn');
+  btn.classList.add('spinning');
+  btn.disabled = true;
+  setTimeout(() => { btn.classList.remove('spinning'); btn.disabled = false; }, 500);
+
+  // SW 업데이트 확인 후 페이지 리로드
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistration().then(reg => {
+      if (reg) {
+        reg.update().then(() => {
+          // 대기 중인 새 SW가 있으면 즉시 활성화
+          if (reg.waiting) {
+            reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+            reg.waiting.addEventListener('statechange', e => {
+              if (e.target.state === 'activated') location.reload();
+            });
+          } else {
+            location.reload();
+          }
+        }).catch(() => location.reload());
+      } else {
+        location.reload();
+      }
+    });
+  } else {
+    location.reload();
+  }
 }
 
 /* ── NAV ── */
