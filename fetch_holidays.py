@@ -14,11 +14,23 @@ def fetch_month(year, month):
         with urllib.request.urlopen(url, timeout=10) as res:
             xml_data = res.read().decode('utf-8')
         root = ET.fromstring(xml_data)
+        EXCLUDE = {
+            '어버이날', '스승의날', '납세자의 날', '소비자의 날',
+            '방재의 날', '환경의 날', '정보통신의 날',
+            '육군의 날', '해군의 날', '공군의 날',
+        }
         dates = []
         for item in root.findall('.//item'):
             is_holiday = item.findtext('isHoliday', '')
             locdate = item.findtext('locdate', '')
-            if is_holiday == 'Y' and locdate:
+            datename = item.findtext('dateName', '').strip()
+            if not locdate or not datename:
+                continue
+            if datename in EXCLUDE:
+                continue
+            # isHoliday=Y 이거나, 이름이 있는 공휴일 항목 포함
+            # 토/일 겹치는 공휴일은 isHoliday=N으로 오는 경우 있음
+            if is_holiday == 'Y' or datename:
                 s = str(locdate)
                 if len(s) == 8:
                     dates.append(f'{s[0:4]}-{s[4:6]}-{s[6:8]}')
