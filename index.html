@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="theme-color" content="#EEF5FB">
@@ -39,7 +39,7 @@
     position: sticky; top: 0; z-index: 100;
     background: rgba(238,245,251,0.95);
     backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
-    padding: 14px 16px 0; border-bottom: 1px solid var(--border);
+    padding: calc(14px + env(safe-area-inset-top)) 16px 0; border-bottom: 1px solid var(--border);
     box-shadow: 0 1px 8px rgba(74,159,212,0.08);
   }
   .header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
