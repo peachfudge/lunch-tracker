@@ -887,7 +887,7 @@ function isToday(d) {
 /* ── 공휴일 (Google Calendar) ── */
 const HOLIDAY_API_KEY = 'AIzaSyCY77aHfleXZuo0MtSa5Yo3XqOTfP1VK4c';
 const HOLIDAY_CAL_ID = 'ko.south_korea#holiday@group.v.calendar.google.com';
-const HOLIDAY_LS_PREFIX = 'holidays_v1_';
+const HOLIDAY_LS_PREFIX = 'holidays_v2_';
 const HOLIDAY_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7일
 
 // 메모리 캐시: { year: Set<'YYYY-MM-DD'> }
@@ -967,6 +967,15 @@ async function isHoliday(dateObj) {
   const holidays = await getHolidays(dateObj.getFullYear());
   return holidays.has(dateKey(dateObj));
 }
+
+// 이전 버전 캐시 정리 (holidays_ 로 시작하는 키 중 현재 버전 아닌 것 삭제)
+(function cleanOldHolidayCache() {
+  Object.keys(localStorage).forEach(key => {
+    if (key.startsWith('holidays_') && !key.startsWith(HOLIDAY_LS_PREFIX)) {
+      localStorage.removeItem(key);
+    }
+  });
+})();
 
 // 앱 시작 시 올해 공휴일 미리 fetch
 getHolidays(new Date().getFullYear()).catch(() => {});
