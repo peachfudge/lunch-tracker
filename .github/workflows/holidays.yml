@@ -11,46 +11,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Fetch holidays
-        run: |
-          API_KEY="${{ secrets.HOLIDAY_API_KEY }}"
-          CURRENT_YEAR=$(date +%Y)
-          NEXT_YEAR=$((CURRENT_YEAR + 1))
-
-          fetch_year() {
-            local year=$1
-            local all_dates=""
-            for month in $(seq 1 12); do
-              mm=$(printf "%02d" $month)
-              response=$(curl -s "https://apis.data.go.kr/B090041/openapi/service/SpcdeInfoService/getRestDeInfo?serviceKey=${API_KEY}&solYear=${year}&solMonth=${mm}&numOfRows=20")
-              dates=$(echo "$response" | grep -oP '(?<=<locdate>)\d+(?=</locdate>)' | while read d; do
-                isHoliday=$(echo "$response" | grep -A5 "<locdate>$d</locdate>" | grep -oP '(?<=<isHoliday>)[YN](?=</isHoliday>)')
-                if [ "$isHoliday" = "Y" ]; then
-                  echo "${d:0:4}-${d:4:2}-${d:6:2}"
-                fi
-              done)
-              all_dates="$all_dates $dates"
-            done
-            echo $all_dates
-          }
-
-          CUR=$(fetch_year $CURRENT_YEAR)
-          NEXT=$(fetch_year $NEXT_YEAR)
-
-          python3 - <<PYEOF
-import json
-cur_year = $CURRENT_YEAR
-next_year = $NEXT_YEAR
-cur_dates = "$CUR".split()
-next_dates = "$NEXT".split()
-data = {
-  str(cur_year): sorted(set(cur_dates)),
-  str(next_year): sorted(set(next_dates)),
-  "updated": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-}
-with open('holidays.json', 'w') as f:
-    json.dump(data, f, ensure_ascii=False, indent=2)
-PYEOF
+      - name: Fetch and save holidays
+        env:
+          API_KEY: ${{ secrets.HOLIDAY_API_KEY }}
+        run: python3 fetch_holidays.py
 
       - name: Commit and push
         run: |
