@@ -916,12 +916,16 @@ async function fetchHolidaysFromAPI(year) {
     const endDate = item.end?.date;
     if (!startDate) return;
     // 멀티데이 이벤트 처리 (추석/설날 연휴 등)
-    // Google Calendar에서 end.date는 마지막날 다음날이므로 -1일 처리
+    // Google Calendar end.date는 마지막날 다음날이므로 그 전까지 순회
+    // 타임존 문제 방지: 'T00:00:00' (로컬 시간)으로 파싱
     if (endDate && endDate > startDate) {
       const cur = new Date(startDate + 'T00:00:00');
       const end = new Date(endDate + 'T00:00:00');
       while (cur < end) {
-        dates.add(cur.toISOString().slice(0, 10));
+        const y = cur.getFullYear();
+        const m = String(cur.getMonth()+1).padStart(2,'0');
+        const dd = String(cur.getDate()).padStart(2,'0');
+        dates.add(`${y}-${m}-${dd}`);
         cur.setDate(cur.getDate() + 1);
       }
     } else {
