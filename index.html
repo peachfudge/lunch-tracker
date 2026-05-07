@@ -884,52 +884,54 @@ function isToday(d) {
   return d.getFullYear()===t.getFullYear()&&d.getMonth()===t.getMonth()&&d.getDate()===t.getDate();
 }
 
-/* ── 공휴일 (Google Calendar) ── */
-const HOLIDAY_API_KEY = 'AIzaSyCY77aHfleXZuo0MtSa5Yo3XqOTfP1VK4c';
-const HOLIDAY_CAL_ID = 'ko.south_korea#holiday@group.v.calendar.google.com';
-const HOLIDAY_LS_PREFIX = 'holidays_v3_';
+/* ── 공휴일 (공공데이터포털 한국천문연구원 특일정보) ── */
+const HOLIDAY_API_KEY = '7d0ef2a2aba35b3a627c4511a4303c310ed726e264e6d498ee64fdcb34411b43';
+const HOLIDAY_LS_PREFIX = 'holidays_v4_';
 const HOLIDAY_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7일
 
 // 메모리 캐시: { year: Set<'YYYY-MM-DD'> }
 const holidayMemCache = {};
 
-// 어버이날 등 기념일(공휴일 아닌 날) 제외 목록
-const HOLIDAY_EXCLUDE_NAMES = new Set([
-  '어버이날', '스승의날', '납세자의 날', '소비자의 날',
-  '방재의 날', '환경의 날', '정보통신의 날',
-  '육군의 날', '해군의 날', '공군의 날',
-]);
+function fetchHolidayMonth(year, month) {
+  return new Promise((resolve, reject) => {
+    const cbName = `_holidayCb_${year}_${month}_${Date.now()}`;
+    const script = document.createElement('script');
+    const mm = String(month).padStart(2, '0');
+    script.src = `https://apis.data.go.kr/B090041/openapi/service/SpcdeInfoService/getRestDeInfo`
+      + `?serviceKey=${HOLIDAY_API_KEY}&solYear=${year}&solMonth=${mm}&numOfRows=20&_type=json&callback=${cbName}`;
+    const timer = setTimeout(() => {
+      cleanup();
+      resolve([]); // 타임아웃 시 빈 배열
+    }, 5000);
+    window[cbName] = (data) => {
+      cleanup();
+      try {
+        const items = data?.response?.body?.items?.item;
+        if (!items) { resolve([]); return; }
+        const arr = Array.isArray(items) ? items : [items];
+        resolve(arr.filter(i => i.isHoliday === 'Y').map(i => String(i.locdate)));
+      } catch(e) { resolve([]); }
+    };
+    script.onerror = () => { cleanup(); resolve([]); };
+    function cleanup() {
+      clearTimeout(timer);
+      delete window[cbName];
+      if (script.parentNode) script.parentNode.removeChild(script);
+    }
+    document.head.appendChild(script);
+  });
+}
 
 async function fetchHolidaysFromAPI(year) {
-  const timeMin = `${year}-01-01T00:00:00Z`;
-  const timeMax = `${year}-12-31T23:59:59Z`;
-  const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(HOLIDAY_CAL_ID)}/events`
-    + `?key=${HOLIDAY_API_KEY}&timeMin=${timeMin}&timeMax=${timeMax}&singleEvents=true&maxResults=200`;
-  const res = await fetch(url);
-  if (!res.ok) throw new Error('Holiday API ' + res.status);
-  const data = await res.json();
+  // 12개월 병렬 fetch
+  const months = Array.from({length:12}, (_,i) => i+1);
+  const results = await Promise.all(months.map(m => fetchHolidayMonth(year, m)));
   const dates = new Set();
-  (data.items || []).forEach(item => {
-    const name = (item.summary || '').trim();
-    if (HOLIDAY_EXCLUDE_NAMES.has(name)) return;
-    const startDate = item.start?.date;
-    const endDate = item.end?.date;
-    if (!startDate) return;
-    // 멀티데이 이벤트 처리 (추석/설날 연휴 등)
-    // Google Calendar end.date는 마지막날 다음날이므로 그 전까지 순회
-    // 타임존 문제 방지: 'T00:00:00' (로컬 시간)으로 파싱
-    if (endDate && endDate > startDate) {
-      const cur = new Date(startDate + 'T00:00:00');
-      const end = new Date(endDate + 'T00:00:00');
-      while (cur < end) {
-        const y = cur.getFullYear();
-        const m = String(cur.getMonth()+1).padStart(2,'0');
-        const dd = String(cur.getDate()).padStart(2,'0');
-        dates.add(`${y}-${m}-${dd}`);
-        cur.setDate(cur.getDate() + 1);
-      }
-    } else {
-      dates.add(startDate);
+  results.flat().forEach(locdate => {
+    // locdate: '20260101' → '2026-01-01'
+    const s = String(locdate);
+    if (s.length === 8) {
+      dates.add(`${s.slice(0,4)}-${s.slice(4,6)}-${s.slice(6,8)}`);
     }
   });
   return dates;
