@@ -229,7 +229,7 @@
   .footer-credit { text-align: left; color: var(--muted2); font-size: 10px; padding: 10px 16px 2px; }
   .footer-version { display: flex; align-items: flex-start; justify-content: space-between; padding: 2px 16px 12px; }
   .version-btn { font-size: 10px; color: var(--muted2); background: none; border: none; font-family: inherit; cursor: pointer; padding: 0; line-height: 2.2; display: block; text-align: left; }
-  .install-btn { font-size: 10px; color: var(--accent); background: none; border: none; font-family: inherit; cursor: pointer; padding: 0; font-weight: 700; line-height: 2.2; display: block; text-align: right; }
+  .install-btn { font-size: 10px; color: var(--accent); background: none; border: none; font-family: inherit; cursor: pointer; padding: 0; font-weight: 700; line-height: 2.2; display: none; text-align: right; }
 
   /* ── 비번 모달 ── */
   .pw-modal-body { padding: 20px 20px 24px; }
@@ -353,7 +353,8 @@
   </div>
   <div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px;">
     <button class="version-btn" style="text-align:right;font-weight:700;color:var(--accent);" onclick="openVersionModal()">사용 방법 · 패치노트</button>
-    <button class="install-btn" style="text-align:right;font-weight:700;" onclick="openInstallModal()">홈 화면에 추가</button>
+    <button class="install-btn" id="install-btn" style="text-align:right;font-weight:700;" onclick="triggerInstall()">앱 설치하기</button>
+    <button class="version-btn" style="text-align:right;font-weight:700;color:var(--accent);" onclick="openInstallModal()">홈 화면에 추가 방법</button>
   </div>
 </div>
 
@@ -629,9 +630,9 @@
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
           안드로이드 (삼성 인터넷)
         </div>
-        <div>1. 하단에 뜨는 <b>설치</b> 버튼을 탭해요</div>
+        <div>1. 하단에 뜨는 <b>홈 화면 또는 웹앱으로 설치</b> 버튼을 탭해요</div>
         <div>2. 이름 확인 후 <b>추가</b>를 탭해요</div>
-        <div style="font-size:11px;color:var(--muted);margin-top:4px;">설치 버튼이 안 보이면 하단 <b>≡ 메뉴 → 현재 페이지 추가 → 홈 화면</b></div>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px;">버튼이 안 보이면 하단 <b>≡ 메뉴 → 현재 페이지 추가 → 홈 화면</b></div>
       </div>
     </div>
   </div>
@@ -1423,15 +1424,19 @@ let deferredPrompt;
 window.addEventListener('beforeinstallprompt', (e) => {
   e.preventDefault();
   deferredPrompt = e;
+  const btn = document.getElementById('install-btn');
+  if (btn) btn.style.display = 'block';
 });
 
-function openInstallModal() {
+function triggerInstall() {
   if (deferredPrompt) {
     deferredPrompt.prompt();
     deferredPrompt.userChoice.then(() => { deferredPrompt = null; });
-  } else {
-    document.getElementById('install-overlay').classList.add('open');
   }
+}
+
+function openInstallModal() {
+  document.getElementById('install-overlay').classList.add('open');
 }
 </script>
 </body>
