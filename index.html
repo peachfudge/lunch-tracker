@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="theme-color" content="#EEF5FB">
@@ -39,8 +39,7 @@
     position: sticky; top: 0; z-index: 100;
     background: rgba(238,245,251,0.95);
     backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
-    padding: 14px 16px 0; border-bottom: 1px solid var(--border);
-    box-shadow: 0 1px 8px rgba(74,159,212,0.08);
+    padding: calc(14px + env(safe-area-inset-top)) 16px 0; border-bottom: 1px solid var(--border);
   }
   .header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
   .app-title { display: flex; align-items: center; gap: 10px; }
@@ -63,6 +62,16 @@
   .nav-btn:active { background: var(--accent); }
   .nav-btn:active svg { stroke: #fff !important; }
   .nav-btn svg { width: 13px; height: 13px; stroke: var(--accent); }
+  .refresh-btn {
+    width: 28px; height: 28px; background: var(--card); border: 1px solid var(--border);
+    border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center;
+    box-shadow: var(--shadow); transition: all 0.12s; flex-shrink: 0;
+  }
+  .refresh-btn:active { background: var(--accent); }
+  .refresh-btn:active svg { stroke: #fff !important; }
+  .refresh-btn svg { width: 13px; height: 13px; stroke: var(--accent); transition: transform 0.4s; }
+  .refresh-btn.spinning svg { animation: spin-once 0.5s ease-out; }
+  @keyframes spin-once { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
   .week-label { font-size: 10px; font-weight: 700; color: var(--muted); min-width: 44px; text-align: center; }
   .view-toggle { display: flex; background: var(--card); border: 1px solid var(--border); border-radius: 20px; padding: 3px; box-shadow: var(--shadow); flex-shrink: 0; }
   .view-btn { padding: 4px 10px; border: none; border-radius: 16px; font-size: 11px; font-weight: 700; cursor: pointer; background: none; color: var(--muted); font-family: inherit; transition: all 0.15s; }
@@ -109,7 +118,7 @@
     overflow: hidden; cursor: pointer; box-shadow: var(--shadow); transition: transform 0.1s, box-shadow 0.12s;
   }
   .week-row:active { transform: scale(0.99); box-shadow: none; }
-  .week-row.today-row { border-color: var(--today-border); background: var(--today-bg); }
+  .week-row.today-row { border-color: var(--today-border); background: var(--card); }
   .week-row-header {
     display: flex; align-items: center; gap: 10px;
     padding: 10px 14px 8px; border-bottom: 1px solid var(--border2);
@@ -342,7 +351,12 @@
         <button class="view-btn" id="btn-week" onclick="setView('week')">주간</button>
         <button class="view-btn" id="btn-day"  onclick="setView('day')">일간</button>
       </div>
-
+      <button class="refresh-btn" id="refresh-btn" onclick="handleRefresh()" title="새로고침">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="23 4 23 10 17 10"/>
+          <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+        </svg>
+      </button>
     </div>
   </div>
   <div class="day-tabs" id="day-tabs"></div>
@@ -350,21 +364,8 @@
 
 <div class="content" id="content"></div>
 
-<!-- 앱 설치 버튼 -->
-<div id="install-btn-wrap" style="display:none; padding: 0 14px 16px;">
-  <button id="install-btn" onclick="triggerInstall()"
-    style="width:100%; padding:14px; background:var(--accent); border:none; border-radius:var(--radius-sm);
-           color:#fff; font-size:15px; font-weight:700; font-family:inherit; cursor:pointer;
-           box-shadow:0 3px 12px rgba(74,159,212,0.30); transition:background 0.15s; display:flex;
-           align-items:center; justify-content:center; gap:8px;">
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-      <polyline points="7 10 12 15 17 10"/>
-      <line x1="12" y1="15" x2="12" y2="3"/>
-    </svg>
-    앱 설치하기
-  </button>
-</div>
+<!-- 앱 설치 버튼 (footer로 이동) -->
+<div id="install-btn-wrap" style="display:none;"></div>
 
 <div class="footer-hint" id="footer-hint" style="display:none;">
   <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -381,6 +382,7 @@
   <div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px;">
     <button class="version-btn" style="text-align:right;font-weight:700;color:var(--accent);" onclick="openVersionModal()">사용 방법 · 패치노트</button>
     <button class="version-btn" style="text-align:right;font-weight:700;color:var(--accent);" onclick="openInstallModal()">홈 화면에 추가 방법</button>
+    <button id="install-btn" onclick="triggerInstall()" class="install-btn" style="display:none;">↓ 앱 설치하기</button>
   </div>
 </div>
 
@@ -604,7 +606,7 @@
         <div>• 주간 보기에서 한 주 전체 메뉴를 확인할 수 있어요</div>
         <div>• 관리자 모드에서 메뉴를 입력/수정할 수 있어요</div>
         <div>• AI 기능으로 식단표 사진을 찍으면 자동 입력돼요</div>
-        <div>• 버그 제보·개선 요청은 하단 제작 탭 → 구글폼 제출</div>
+        <div>• 버그 제보·개선 요청은 좌측 하단 <b>제작</b> 탭 → 구글폼 제출</div>
       </div>
       <!-- 패치노트: 스크롤 -->
       <div style="border-top:1px solid var(--border2);padding-top:14px;flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;">
@@ -616,6 +618,8 @@
           <span style="font-weight:800;color:var(--accent);">v1.1.0</span>
           <span style="font-size:11px;color:var(--muted);margin-left:6px;">2026.05</span>
           <div style="margin-top:4px;">• 공휴일 날짜 빨간색 표시 기능 추가</div>
+          <div>• 주간뷰 오늘 날짜 배경색 개선</div>
+          <div>• 헤더 우측 새로고침 버튼 추가 (앱 업데이트 즉시 반영)</div>
         </div>
         <div style="margin-bottom:10px;">
           <span style="font-weight:800;color:var(--accent);">v1.0.0</span>
@@ -655,18 +659,19 @@
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
           안드로이드 (크롬)
         </div>
-        <div>1. 하단에 뜨는 <b>설치</b> 버튼을 탭해요</div>
-        <div>2. 이름 확인 후 <b>추가</b>를 탭해요</div>
-        <div style="font-size:11px;color:var(--muted);margin-top:4px;">설치 버튼이 안 보이면 우상단 <b>⋮ 메뉴 → 홈 화면에 추가</b></div>
+        <div>1. 하단 <b>앱 설치하기</b> 버튼을 탭해요</div>
+        <div>2. <b>설치</b>를 탭해요</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px;">버튼이 안 보이면 우상단 <b>⋮ 메뉴 → 홈 화면에 추가</b></div>
       </div>
       <div style="border-top:1px solid var(--border2);padding-top:14px;margin-bottom:16px;">
         <div style="display:flex;align-items:center;gap:5px;font-weight:800;color:var(--text);margin-bottom:6px;">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
           안드로이드 (삼성 인터넷)
         </div>
-        <div>1. 하단에 뜨는 <b>설치</b> 버튼을 탭해요</div>
-        <div>2. 이름 확인 후 <b>추가</b>를 탭해요</div>
-        <div style="font-size:11px;color:var(--muted);margin-top:4px;">버튼이 안 보이면 하단 <b>≡ 메뉴 → 현재 페이지 추가 → 홈 화면 또는 웹앱으로 설치</b></div>
+        <div>1. 하단 <b>앱 설치하기</b> 버튼을 탭해요</div>
+        <div>2. <b>추가</b>를 탭해요</div>
+        <div>3. 경고창 → <b>세부정보 더보기</b> → <b>무시하고 설치</b> → 본인인증</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px;">버튼이 안 보이면 하단 <b>⋮ 메뉴 → 현재 페이지 추가 → 웹앱으로 설치</b></div>
       </div>
       <div style="border-top:1px solid var(--border2);padding-top:14px;">
         <div style="display:flex;align-items:center;gap:5px;font-weight:800;color:var(--text);margin-bottom:6px;">
@@ -1471,6 +1476,37 @@ async function confirmReset() {
   await render();
 }
 
+/* ── REFRESH ── */
+function handleRefresh() {
+  const btn = document.getElementById('refresh-btn');
+  btn.classList.add('spinning');
+  btn.disabled = true;
+  setTimeout(() => { btn.classList.remove('spinning'); btn.disabled = false; }, 500);
+
+  // SW 업데이트 확인 후 페이지 리로드
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistration().then(reg => {
+      if (reg) {
+        reg.update().then(() => {
+          // 대기 중인 새 SW가 있으면 즉시 활성화
+          if (reg.waiting) {
+            reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+            reg.waiting.addEventListener('statechange', e => {
+              if (e.target.state === 'activated') location.reload();
+            });
+          } else {
+            location.reload();
+          }
+        }).catch(() => location.reload());
+      } else {
+        location.reload();
+      }
+    });
+  } else {
+    location.reload();
+  }
+}
+
 /* ── NAV ── */
 function changeWeek(d) { weekOffset+=d; invalidateWeekCache(getWeekDates(weekOffset)); render(); }
 function setView(v) {
@@ -1516,8 +1552,8 @@ let deferredPrompt;
 window.addEventListener('beforeinstallprompt', (e) => {
   e.preventDefault();
   deferredPrompt = e;
-  const wrap = document.getElementById('install-btn-wrap');
-  if (wrap) wrap.style.display = 'block';
+  const btn = document.getElementById('install-btn');
+  if (btn) btn.style.display = 'block';
 });
 
 function triggerInstall() {
@@ -1525,8 +1561,8 @@ function triggerInstall() {
     deferredPrompt.prompt();
     deferredPrompt.userChoice.then(() => {
       deferredPrompt = null;
-      const wrap = document.getElementById('install-btn-wrap');
-      if (wrap) wrap.style.display = 'none';
+      const btn = document.getElementById('install-btn');
+      if (btn) btn.style.display = 'none';
     });
   }
 }
