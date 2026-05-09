@@ -227,8 +227,6 @@
   .btn-save:active { background: var(--accent-dark); }
 
   /* ── FOOTER ── */
-  .footer-hint { display: flex; align-items: center; justify-content: center; gap: 5px; color: var(--muted2); font-size: 11px; padding: 6px 0 2px; }
-  .footer-hint svg { width: 12px; height: 12px; stroke: var(--muted2); }
   .footer-credit { text-align: left; color: var(--muted2); font-size: 10px; padding: 10px 16px 2px; }
   .footer-version { display: flex; align-items: flex-start; justify-content: space-between; padding: 2px 16px 12px; }
   .version-btn { font-size: 10px; color: var(--muted2); background: none; border: none; font-family: inherit; cursor: pointer; padding: 0; line-height: 2.2; display: block; text-align: left; }
@@ -348,13 +346,7 @@
 <div class="content" id="content"></div>
 
 
-<div class="footer-hint" id="footer-hint" style="display:none;">
-  <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-  </svg>
-  항목을 탭하면 편집할 수 있어요
-</div>
+
 <div class="footer-version">
   <div style="display:flex;flex-direction:column;gap:2px;">
     <a href="https://forms.gle/fZNQBHENcKQQUvRn8" target="_blank" style="font-size:10px;color:#4A9FD4;font-weight:700;text-decoration:none;line-height:2.2;display:block;">제작 : @peachfudge</a>
@@ -983,15 +975,12 @@ async function renderTabs() {
 
 async function renderContent() {
   const cont = document.getElementById('content');
-  const hint = document.getElementById('footer-hint');
   const footerVersion = document.querySelector('.footer-version');
   if (currentView==='week') {
     await renderWeekView(cont);
-    hint.style.display='none';
     if (footerVersion) footerVersion.style.display='none';
   } else {
     await renderDayView(cont);
-    hint.style.display = isEditMode ? 'flex' : 'none';
     if (footerVersion) footerVersion.style.display='flex';
   }
 }
