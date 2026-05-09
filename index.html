@@ -479,10 +479,10 @@
         <div id="replace-rules-panel" style="display:none;">
           <div id="replace-rules-list" style="display:flex;flex-direction:column;gap:5px;margin-bottom:7px;"></div>
           <div style="display:flex;gap:5px;align-items:center;">
-            <input id="replace-from" placeholder="찾을 텍스트" style="flex:1;padding:7px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;font-family:inherit;background:var(--bg);color:var(--text);outline:none;"/>
-            <span style="font-size:12px;color:var(--muted);">→</span>
-            <input id="replace-to" placeholder="바꿀 텍스트" style="flex:1;padding:7px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;font-family:inherit;background:var(--bg);color:var(--text);outline:none;"/>
-            <button onclick="addReplaceRule()" style="padding:7px 11px;background:var(--accent);border:none;border-radius:8px;color:#fff;font-size:12px;font-weight:700;font-family:inherit;cursor:pointer;">추가</button>
+            <input id="replace-from" placeholder="찾을 텍스트" style="flex:1;min-width:0;padding:7px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;font-family:inherit;background:var(--bg);color:var(--text);outline:none;"/>
+            <span style="font-size:12px;color:var(--muted);flex-shrink:0;">→</span>
+            <input id="replace-to" placeholder="바꿀 텍스트" style="flex:1;min-width:0;padding:7px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;font-family:inherit;background:var(--bg);color:var(--text);outline:none;"/>
+            <button onclick="addReplaceRule()" style="padding:7px 11px;background:var(--accent);border:none;border-radius:8px;color:#fff;font-size:12px;font-weight:700;font-family:inherit;cursor:pointer;flex-shrink:0;">추가</button>
           </div>
         </div>
       </div>
