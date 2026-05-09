@@ -664,20 +664,39 @@
 /* ── SUPABASE ── */
 const SUPABASE_URL = 'https://jugbzaufdbdntdlvkxnq.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp1Z2J6YXVmZGJkbnRkbHZreG5xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgwNzY2MTcsImV4cCI6MjA5MzY1MjYxN30.NSUat9GUjaUzx219Z9J_HnroGpoxMsXbXEzEQUgtRYg';
-async function sha256(str) {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(str);
-  const hashBuffer = await window.crypto.subtle.digest('SHA-256', data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+const EDGE_FN_URL = 'https://jugbzaufdbdntdlvkxnq.supabase.co/functions/v1/menu-write';
+
+// 현재 세션의 비밀번호 (메모리에만 보관, 새로고침 시 초기화)
+let _sessionPassword = null;
+
+async function callMenuWrite(payload) {
+  if (!_sessionPassword) throw new Error('비밀번호가 설정되지 않았습니다');
+  const res = await fetch(EDGE_FN_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY },
+    body: JSON.stringify({ ...payload, password: _sessionPassword })
+  });
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.error || '서버 오류');
+  return json;
 }
 
 async function verifyPassword(input) {
   try {
-    const rows = await sbFetch('settings?key=eq.pw_hash&select=value');
-    if (!rows || !rows[0]) return false;
-    const hash = await sha256(input);
-    return hash.trim() === rows[0].value.trim();
+    // Edge Function에 save 대신 delete(존재하지 않는 키)로 비번 검증만 수행
+    // → 실제로는 'verify' action을 사용 (비번 검증 전용)
+    const res = await fetch(EDGE_FN_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY },
+      body: JSON.stringify({ action: 'verify', password: input })
+    });
+    const json = await res.json();
+    if (res.status === 403) return false;
+    if (res.ok) {
+      _sessionPassword = input; // 검증 성공 시 메모리에 보관
+      return true;
+    }
+    return false;
   } catch(e) { return false; }
 }
 
@@ -709,17 +728,12 @@ async function loadMenu(k) {
 }
 
 async function saveMenu(k, d) {
-  await sbFetch('menus', {
-    method: 'POST',
-    headers: { 'Prefer': 'resolution=merge-duplicates' },
-    body: JSON.stringify({ date_key: k, data: d, updated_at: new Date().toISOString() })
-  });
+  await callMenuWrite({ action: 'save', date_key: k, data: d });
 }
 
 async function deleteWeekMenus(dates) {
-  for (const d of dates) {
-    await sbFetch(`menus?date_key=eq.${dateKey(d)}`, { method: 'DELETE' });
-  }
+  const keys = dates.map(d => dateKey(d));
+  await callMenuWrite({ action: 'delete', date_keys: keys });
 }
 
 /* ── 캐시 ── */
@@ -806,8 +820,9 @@ let isEditMode = false;
 /* ── 비밀번호 / 편집 모드 ── */
 function onLockBadgeClick() {
   if (isEditMode) {
-    // 잠금
+    // 잠금 + 세션 비밀번호 초기화
     isEditMode = false;
+    _sessionPassword = null;
     updateLockUI();
     render();
   } else {
