@@ -422,7 +422,7 @@
     </div>
     <div class="modal-body">
       <div class="ai-apikey-row">
-        <input type="password" class="ai-apikey-input" id="ai-apikey" placeholder="Claude API 키 (저장됨)"/>
+        <input type="password" class="ai-apikey-input" id="ai-apikey" placeholder="OpenAI API 키 (저장됨)"/>
         <button class="ai-apikey-save" onclick="saveApiKey()">저장</button>
       </div>
       <div class="ai-tab-row" style="margin-bottom:10px;">
@@ -1200,7 +1200,7 @@ function deleteReplaceRule(i) {
 }
 
 /* ── AI IMPORT ── */
-const LS_API_KEY      = 'claude_api_key';
+const LS_API_KEY      = 'openai_api_key';
 const LS_REPLACE_RULES = 'replace_rules';
 
 /* ── 패턴 자동완성 기본값 ── */
@@ -1384,18 +1384,20 @@ ${dates.map(d => `"${dateKey(d)}" (${DAYS[d.getDay()]}요일 ${d.getMonth()+1}/$
 
   try {
     const userContent = [];
-    if (isImg) userContent.push({ type: 'image', source: { type: 'base64', media_type: aiImageMime, data: aiImageBase64 } });
     const promptText = (aiMode === 'week' ? weekPrompt : singlePrompt) + (!isImg ? '\n\n메뉴 텍스트:\n' + txt : '');
+    if (isImg) {
+      userContent.push({ type: 'image_url', image_url: { url: `data:${aiImageMime};base64,${aiImageBase64}` } });
+    }
     userContent.push({ type: 'text', text: promptText });
 
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
-      body: JSON.stringify({ model: 'claude-haiku-4-5', max_tokens: 1024, messages: [{ role: 'user', content: userContent }] })
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+      body: JSON.stringify({ model: 'gpt-4o-mini', max_tokens: 1024, messages: [{ role: 'user', content: userContent }] })
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error?.message || '오류');
-    let raw = data.content?.[0]?.text || '';
+    let raw = data.choices?.[0]?.message?.content || '';
     raw = raw.replace(/```json|```/g, '').trim();
     const parsed = JSON.parse(raw);
 
