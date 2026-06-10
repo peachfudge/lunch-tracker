@@ -1361,22 +1361,23 @@ async function runAiAnalyze() {
   const singlePrompt = `구내식당 점심 메뉴표입니다. 아래 3개 카테고리로만 분류해서 순수 JSON만 응답하세요.
 
 - main: 메인 요리 1가지 (빨간색/강조 텍스트로 표시된 것. 비빔밥/콩나물밥처럼 밥 자체가 메인인 경우 포함)
-- soup: 국/찌개 1가지
-- side: 반찬 여러개 쉼표 구분 ("쌀밥" 두 글자만 제외, 나머지 밥 종류 포함. 메인으로 나오는 밥 제외)
+- soup: 국/찌개/탕 1가지만. 반드시 별도 필드로 분리
+- side: 반찬만 쉼표 구분. "쌀밥" 두 글자만 제외. 국/찌개/탕은 절대 여기 넣지 말 것
 
 "저염데이" 같은 이벤트 표기는 무시하고 실제 요리 이름만. 없으면 빈 문자열.
 형식: {"main":"","soup":"","side":""}`;
 
   const dates = getWeekDates(aiWeekOffset);
+  const monToSun = [...dates.slice(1), dates[0]]; // 월~일 순서로 재정렬
   const weekPrompt = `구내식당 주간 메뉴표 사진입니다. 요일별로 분류해서 순수 JSON만 응답하세요.
 
 날짜 키는 반드시 아래 목록에서:
-${dates.map(d => `"${dateKey(d)}" (${DAYS[d.getDay()]}요일 ${d.getMonth()+1}/${d.getDate()})`).join(', ')}
+${monToSun.map(d => `"${dateKey(d)}" (${DAYS[d.getDay()]}요일 ${d.getMonth()+1}/${d.getDate()})`).join(', ')}
 
 각 날짜마다 3개 카테고리:
-- main: 메인 요리 1가지 (빨간색/강조 텍스트. 비빔밥/콩나물밥 등 밥이 메인인 경우 포함)
-- soup: 국/찌개 1가지
-- side: 반찬 여러개 쉼표 구분 ("쌀밥" 두 글자만 제외)
+- main: 메인 요리 1가지 (빨간색/강조 텍스트로 표시된 것. 비빔밥/콩나물밥 등 밥이 메인인 경우 포함)
+- soup: 국/찌개/탕 1가지만 (예: 콩나물국, 김치찌개, 소고기두부탕국). 반드시 별도 필드로 분리
+- side: 반찬만 쉼표 구분. "쌀밥" 두 글자만 제외. 국/찌개/탕은 절대 여기 넣지 말 것
 
 무시할 것: 여러 요일 공통 안내행(토핑라면 종류 등), 원산지 표기, 하단 주석
 "저염데이" 등 이벤트 표기 무시. 메뉴 불명확해도 최대한 7일치 모두 포함.
@@ -1393,7 +1394,7 @@ ${dates.map(d => `"${dateKey(d)}" (${DAYS[d.getDay()]}요일 ${d.getMonth()+1}/$
     const res = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-      body: JSON.stringify({ model: 'gpt-4o-mini', max_tokens: 1024, messages: [{ role: 'user', content: userContent }] })
+      body: JSON.stringify({ model: 'gpt-4o', max_tokens: 1024, messages: [{ role: 'user', content: userContent }] })
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error?.message || '오류');
