@@ -344,6 +344,7 @@
 
 
 
+<div style="text-align:center;color:var(--muted2);font-size:10px;padding:8px 16px 0;line-height:1.7;">이 앱은 쿠팡 전라광주4센터 구성원을 위해 개인이 만든 비공식 앱이에요.<br>식당 사정에 따라 실제 메뉴가 변경될 수 있으니 참고용으로 활용해주세요 ꈍ◡ꈍ</div>
 <div class="footer-version">
   <div style="display:flex;flex-direction:column;gap:2px;">
     <a href="https://forms.gle/fZNQBHENcKQQUvRn8" target="_blank" style="font-size:10px;color:#4A9FD4;font-weight:700;text-decoration:none;line-height:2.2;display:block;">제작 : @peachfudge</a>
@@ -421,7 +422,7 @@
     </div>
     <div class="modal-body">
       <div class="ai-apikey-row">
-        <input type="password" class="ai-apikey-input" id="ai-apikey" placeholder="Gemini API 키 (저장됨)"/>
+        <input type="password" class="ai-apikey-input" id="ai-apikey" placeholder="Claude API 키 (저장됨)"/>
         <button class="ai-apikey-save" onclick="saveApiKey()">저장</button>
       </div>
       <div class="ai-tab-row" style="margin-bottom:10px;">
@@ -432,8 +433,12 @@
         <div style="font-size:11px;font-weight:800;color:var(--muted);margin-bottom:6px;">등록할 날짜</div>
         <div id="ai-day-selector" style="display:flex;gap:5px;flex-wrap:wrap;"></div>
       </div>
-      <div id="ai-week-notice" style="display:none;margin-bottom:12px;padding:10px 12px;background:var(--today-bg);border-radius:var(--radius-sm);border:1px solid var(--border2);">
-        <div style="font-size:12px;color:var(--text2);line-height:1.6;">📋 주간 메뉴표 사진을 올리면<br>요일별로 자동 분류해서 한번에 등록해요</div>
+      <div id="ai-week-notice" style="display:none;margin-bottom:12px;">
+        <div style="padding:10px 12px;background:var(--today-bg);border-radius:var(--radius-sm);border:1px solid var(--border2);margin-bottom:8px;">
+          <div style="font-size:12px;color:var(--text2);line-height:1.6;">📋 주간 메뉴표 사진을 올리면<br>요일별로 자동 분류해서 한번에 등록해요</div>
+        </div>
+        <div style="font-size:11px;font-weight:800;color:var(--muted);margin-bottom:6px;">등록할 주</div>
+        <div id="ai-week-selector" style="display:flex;gap:5px;flex-wrap:wrap;"></div>
       </div>
       <div class="ai-tab-row">
         <button class="ai-tab active" id="ai-tab-img" onclick="switchAiTab('img')">📷 사진</button>
@@ -830,12 +835,7 @@ function openPwModal() {
 function openVersionModal() {
   document.getElementById('version-overlay').classList.add('open');
 }
-function closePwModal() {
-  document.getElementById('pw-overlay').classList.remove('open');
-}
-function closePwIfOutside(e) {
-  if (e.target === document.getElementById('pw-overlay')) closePwModal();
-}
+function closePwIfOutside(e) { if (e.target === document.getElementById('pw-overlay')) closePwModal(); }
 async function submitPw() {
   const val = document.getElementById('pw-input').value;
   const ok = await verifyPassword(val);
@@ -1005,23 +1005,9 @@ async function renderWeekView(cont) {
       </div>
       ${today?'<span class="today-chip">오늘</span>':''}
     </div>`;
-    const mainHtml = MAIN_CATS.map(cat=>`
-      <div class="wcell">
-        <div class="wcell-label" style="color:${cat.hex}">
-          <span class="ic">${svg(cat.svgKey,cat.hex)}</span>${cat.label}
-        </div>
-        ${renderWcellVal(menu[cat.key])}
-      </div>`).join('');
-    const extraHtml = EXTRA_CATS.map(cat=>`
-      <div class="wcell">
-        <div class="wcell-label" style="color:${cat.hex}">
-          <span class="ic">${svg(cat.svgKey,cat.hex)}</span>${cat.label}
-        </div>
-        ${renderWcellVal(menu[cat.key])}
-      </div>`).join('');
     row.innerHTML = header
-      + `<div class="week-main-row">${mainHtml}</div>`
-      + `<div class="week-extra-row">${extraHtml}</div>`;
+      + `<div class="week-main-row">${renderCatCells(MAIN_CATS, menu)}</div>`
+      + `<div class="week-extra-row">${renderCatCells(EXTRA_CATS, menu)}</div>`;
     row.onclick = () => { selectedDayOffset=i; setView('day'); };
     wrap.appendChild(row);
   });
@@ -1046,15 +1032,27 @@ async function renderDayView(cont) {
   cont.appendChild(wrap);
 }
 
+function formatMenuVal(val) {
+  return val ? val.split(',').map(s => s.trim()).filter(Boolean).join(', ') : '';
+}
 function renderValueHtml(val) {
-  if (!val) return `<div class="cat-value empty">${isEditMode ? '탭해서 입력' : '—'}</div>`;
-  const parts = val.split(',').map(s => s.trim()).filter(Boolean);
-  return `<div class="cat-value" style="white-space:normal;word-break:keep-all;line-height:1.4;">${parts.join(', ')}</div>`;
+  const f = formatMenuVal(val);
+  if (!f) return `<div class="cat-value empty">${isEditMode ? '탭해서 입력' : '—'}</div>`;
+  return `<div class="cat-value" style="white-space:normal;word-break:keep-all;line-height:1.4;">${f}</div>`;
 }
 function renderWcellVal(val) {
-  if (!val) return `<div class="wcell-val empty">—</div>`;
-  const parts = val.split(',').map(s => s.trim()).filter(Boolean);
-  return `<div class="wcell-val">${parts.join(', ')}</div>`;
+  const f = formatMenuVal(val);
+  if (!f) return `<div class="wcell-val empty">—</div>`;
+  return `<div class="wcell-val">${f}</div>`;
+}
+function renderCatCells(cats, menu) {
+  return cats.map(cat => `
+    <div class="wcell">
+      <div class="wcell-label" style="color:${cat.hex}">
+        <span class="ic">${svg(cat.svgKey, cat.hex)}</span>${cat.label}
+      </div>
+      ${renderWcellVal(menu[cat.key])}
+    </div>`).join('');
 }
 function renderAiResultRow(k, v) {
   const cat = ALL_CATS.find(c => c.key === k);
@@ -1093,11 +1091,16 @@ function openModal(dayKey, cat) {
   document.getElementById('modal-overlay').classList.add('open');
   setTimeout(() => document.getElementById('modal-input').focus(), 320);
 }
-function closeModal() {
-  document.getElementById('modal-overlay').classList.remove('open');
-  editingDayKey = null; editingCat = null;
-}
-function closeModalIfOutside(e) { if (e.target===document.getElementById('modal-overlay')) closeModal(); }
+/* ── MODAL HELPERS ── */
+function closeOverlay(id) { document.getElementById(id).classList.remove('open'); }
+function closeModal()    { closeOverlay('modal-overlay'); editingDayKey = null; editingCat = null; }
+function closePwModal()  { closeOverlay('pw-overlay'); }
+function closeAiModal()  { closeOverlay('ai-overlay'); }
+function closeReset()    { closeOverlay('reset-overlay'); }
+function closeModalIfOutside(e) { if (e.target === document.getElementById('modal-overlay')) closeModal(); }
+function closePwIfOutside(e)    { if (e.target === document.getElementById('pw-overlay')) closePwModal(); }
+function closeAiIfOutside(e)    { if (e.target === document.getElementById('ai-overlay')) closeAiModal(); }
+function closeResetIfOutside(e) { if (e.target === document.getElementById('reset-overlay')) closeReset(); }
 
 
 
@@ -1133,13 +1136,13 @@ const DEFAULT_REPLACE_RULES = [
 
 function loadReplaceRules() {
   try {
-    const saved = localStorage.getItem('replace_rules');
+    const saved = localStorage.getItem(LS_REPLACE_RULES);
     return saved ? JSON.parse(saved) : [...DEFAULT_REPLACE_RULES];
   } catch { return [...DEFAULT_REPLACE_RULES]; }
 }
 
 function saveReplaceRules(rules) {
-  localStorage.setItem('replace_rules', JSON.stringify(rules));
+  localStorage.setItem(LS_REPLACE_RULES, JSON.stringify(rules));
 }
 
 function applyReplaceRules(text) {
@@ -1197,13 +1200,69 @@ function deleteReplaceRule(i) {
 }
 
 /* ── AI IMPORT ── */
+const LS_API_KEY      = 'claude_api_key';
+const LS_REPLACE_RULES = 'replace_rules';
+
+/* ── 패턴 자동완성 기본값 ── */
+const DEFAULT_PATTERNS = {
+  plus: {
+    0: '오미자차',   // 일
+    1: '그린샐러드', // 월
+    2: '누룽지',     // 화
+    3: '그린샐러드', // 수
+    4: '누룽지',     // 목
+    5: '그린샐러드', // 금
+    6: '매실차',     // 토
+  },
+  ramen_topping: {
+    0: '만두라면',   // 일
+    1: '계란라면',   // 월
+    2: '콩나물라면', // 화
+    3: '계란라면',   // 수
+    4: '치즈라면',   // 목
+    5: '떡라면',     // 금
+    6: '계란라면',   // 토
+  },
+  simple: {
+    0: '선식*두유',
+    1: '듬뿍햄치즈에그샌드위치, 오렌지주스',
+    2: '대만식달콤햄치즈샌드위치, 바나나, 포도주스',
+    3: '리얼촉촉에그샌드위치, 사과주스',
+    4: '햄&참치샐러드샌드위치, 망고주스',
+    5: '케이준치킨&햄샌드위치, 오렌지주스',
+    6: '선식*두유',
+  },
+};
+
+function loadPatterns() {
+  try {
+    const saved = localStorage.getItem('menu_patterns');
+    return saved ? JSON.parse(saved) : JSON.parse(JSON.stringify(DEFAULT_PATTERNS));
+  } catch { return JSON.parse(JSON.stringify(DEFAULT_PATTERNS)); }
+}
+
+function applyPatterns(dateObj, menu) {
+  const dow = dateObj.getDay();
+  const patterns = loadPatterns();
+  const result = { ...menu };
+  ['plus', 'ramen_topping', 'simple'].forEach(key => {
+    if (!result[key] && patterns[key]?.[dow]) {
+      result[key] = patterns[key][dow];
+    }
+  });
+  return result;
+}
+
 let aiImageBase64 = null, aiImageMime = null, aiParsedResult = null;
+let aiWeekOffset = 0; // 주간 모드용 별도 주 오프셋
 
 function openAiModal() {
   if (!isEditMode) return;
-  const saved = localStorage.getItem('gemini_api_key') || '';
+  const saved = localStorage.getItem(LS_API_KEY) || '';
   document.getElementById('ai-apikey').value = saved;
+  aiWeekOffset = weekOffset;
   renderAiDaySelector();
+  renderAiWeekSelector();
   aiImageBase64 = null; aiImageMime = null; aiParsedResult = null;
   document.getElementById('ai-preview').style.display = 'none';
   document.getElementById('ai-dropzone').style.display = 'block';
@@ -1216,11 +1275,9 @@ function openAiModal() {
   switchAiTab('img');
   document.getElementById('ai-overlay').classList.add('open');
 }
-function closeAiModal() { document.getElementById('ai-overlay').classList.remove('open'); }
-function closeAiIfOutside(e) { if (e.target===document.getElementById('ai-overlay')) closeAiModal(); }
 function saveApiKey() {
   const k = document.getElementById('ai-apikey').value.trim();
-  if (k) { localStorage.setItem('gemini_api_key', k); alert('저장됐어요!'); }
+  if (k) { localStorage.setItem(LS_API_KEY, k); alert('저장됐어요!'); }
 }
 let aiMode = 'single'; // 'single' | 'week'
 
@@ -1251,6 +1308,22 @@ function renderAiDaySelector() {
     sel.appendChild(btn);
   });
 }
+function renderAiWeekSelector() {
+  const sel = document.getElementById('ai-week-selector');
+  sel.innerHTML = '';
+  [-1, 0, 1].forEach(off => {
+    const dates = getWeekDates(off);
+    const mon = dates[1], sun = dates[0];
+    const label = off === 0 ? '이번 주' : off === -1 ? '저번 주' : '다음 주';
+    const range = `${mon.getMonth()+1}/${mon.getDate()}~${dates[6].getMonth()+1}/${dates[6].getDate()}`;
+    const isSelected = off === aiWeekOffset;
+    const btn = document.createElement('button');
+    btn.style.cssText = `padding:5px 10px;border-radius:8px;border:1.5px solid ${isSelected?'var(--accent)':'var(--border)'};background:${isSelected?'var(--accent)':'var(--card)'};color:${isSelected?'#fff':'var(--text2)'};font-size:11px;font-weight:700;font-family:inherit;cursor:pointer;`;
+    btn.innerHTML = `${label}<br><span style="font-size:9px;font-weight:400;opacity:0.8">${range}</span>`;
+    btn.onclick = () => { aiWeekOffset = off; renderAiWeekSelector(); };
+    sel.appendChild(btn);
+  });
+}
 function handleAiFile(e) { if (e.target.files[0]) loadAiImage(e.target.files[0]); }
 function handleAiDrop(e) {
   e.preventDefault();
@@ -1270,83 +1343,68 @@ function loadAiImage(file) {
   reader.readAsDataURL(file);
 }
 async function runAiAnalyze() {
-  const apiKey = localStorage.getItem('gemini_api_key') || document.getElementById('ai-apikey').value.trim();
-  if (!apiKey) { alert('Gemini API 키를 입력하고 저장해주세요.'); return; }
+  const apiKey = localStorage.getItem(LS_API_KEY) || document.getElementById('ai-apikey').value.trim();
+  if (!apiKey) { alert('Claude API 키를 입력하고 저장해주세요.'); return; }
   const isImg = document.getElementById('ai-tab-img').classList.contains('active');
   if (isImg && !aiImageBase64) { alert('사진을 먼저 선택해주세요.'); return; }
   const txt = document.getElementById('ai-textarea').value.trim();
   if (!isImg && !txt) { alert('텍스트를 입력해주세요.'); return; }
+
   const statusEl = document.getElementById('ai-status');
   const resultEl = document.getElementById('ai-result');
   statusEl.style.display = 'block';
-  statusEl.textContent = aiMode==='week' ? '✨ AI가 일주일치 메뉴를 분석중이에요...' : '✨ AI가 메뉴를 분석중이에요...';
+  statusEl.textContent = aiMode === 'week' ? '✨ AI가 일주일치 메뉴를 분석중이에요...' : '✨ AI가 메뉴를 분석중이에요...';
   resultEl.style.display = 'none';
   document.getElementById('ai-analyze-btn').disabled = true;
   document.getElementById('ai-apply-btn').style.display = 'none';
 
-  const singlePrompt = `다음은 구내식당 점심 메뉴표입니다. 반드시 아래 규칙대로 6개 카테고리로 분류해서 JSON만 응답하세요. 마크다운 없이 순수 JSON만.
+  const singlePrompt = `구내식당 점심 메뉴표입니다. 아래 3개 카테고리로만 분류해서 순수 JSON만 응답하세요.
 
-【카테고리 규칙 - 엄격히 준수】
-- main: 메인 요리 1가지 (예: 미니돈가스&케찹, 제육볶음, 돈육간장불고기). 비빔밥/콩나물밥처럼 밥 자체가 메인인 경우도 여기에 (보통 메뉴표 상단에 빨간색/강조 텍스트로 표시됨)
-- soup: 국/찌개 1가지 (예: 김치청국장, 콩나물국, 무청된장국)
-- side: 반찬 여러개를 쉼표로 구분 (예: 건파래무침, 무생채, 배추김치). "쌀밥" 두 글자 그대로인 것만 제외, 보리쌀밥/콩밥/흑미밥/찰밥/찹쌀밥 등 나머지 밥 종류는 포함. 비빔밥/콩나물밥 등 메인으로 나오는 밥은 제외
-- plus: PLUS 코너 1가지 (예: 그린샐러드, 누룽지, 매실차). 샐러드는 무조건 여기
-- ramen_topping: 라면 코너 1가지 (예: 치즈라면, 계란라면, 떡라면, 콩나물라면). ~라면은 무조건 여기
-- simple: 간편식 코너 전체 메뉴를 쉼표로 구분 (샌드위치, 주스, 바나나, 선식, 두유, 도시락 등 간편식 코너에 있는 것 전부)
+- main: 메인 요리 1가지 (빨간색/강조 텍스트로 표시된 것. 비빔밥/콩나물밥처럼 밥 자체가 메인인 경우 포함)
+- soup: 국/찌개 1가지
+- side: 반찬 여러개 쉼표 구분 ("쌀밥" 두 글자만 제외, 나머지 밥 종류 포함. 메인으로 나오는 밥 제외)
 
-【절대 금지】
-- 라면을 simple에 넣지 마세요
-- 샐러드(그린샐러드 등)를 simple에 넣지 마세요
-- 여러 카테고리를 하나로 합치지 마세요
-- "저염데이", "분식데이", "오늘은 ~DAY" 같은 이벤트/행사 표기는 main에 넣지 마세요. 실제 요리 이름만 넣으세요
+"저염데이" 같은 이벤트 표기는 무시하고 실제 요리 이름만. 없으면 빈 문자열.
+형식: {"main":"","soup":"","side":""}`;
 
-해당 카테고리가 없으면 빈 문자열.
-형식: {"main":"","soup":"","side":"","plus":"","ramen_topping":"","simple":""}`;
+  const dates = getWeekDates(aiWeekOffset);
+  const weekPrompt = `구내식당 주간 메뉴표 사진입니다. 요일별로 분류해서 순수 JSON만 응답하세요.
 
-  const dates = getWeekDates(weekOffset);
-  const weekPrompt = `다음은 구내식당 주간 메뉴표 사진입니다. 요일별로 메뉴를 분류해서 JSON만 응답하세요. 마크다운 없이 순수 JSON만.
-
-사진에서 각 날짜/요일 컬럼을 찾아서 아래 형식으로 응답하세요.
-날짜 키는 반드시 아래 목록 중에서 골라주세요:
+날짜 키는 반드시 아래 목록에서:
 ${dates.map(d => `"${dateKey(d)}" (${DAYS[d.getDay()]}요일 ${d.getMonth()+1}/${d.getDate()})`).join(', ')}
 
-【무시할 것】
-- 여러 요일에 걸쳐 합쳐진 셀의 공통 안내 텍스트 (예: "토핑라면(신라면/진라면...)" 같은 행)
-- 원산지 표기 (예: 배추:중국산, 쌀:국내산 등 괄호 안 내용)
-- 하단 주석, 알레르기 정보, 안내문 전체
-
-【카테고리 규칙 - 엄격히 준수】
-- main: 메인 요리 1가지. 비빔밥/콩나물밥처럼 밥 자체가 메인인 경우도 여기에 (보통 메뉴표 상단에 빨간색/강조 텍스트로 표시됨)
+각 날짜마다 3개 카테고리:
+- main: 메인 요리 1가지 (빨간색/강조 텍스트. 비빔밥/콩나물밥 등 밥이 메인인 경우 포함)
 - soup: 국/찌개 1가지
-- side: 반찬 여러개를 쉼표로 구분. "쌀밥" 두 글자 그대로인 것만 제외, 보리쌀밥/콩밥/흑미밥/찰밥/찹쌀밥 등 나머지 밥 종류는 포함. 비빔밥/콩나물밥 등 메인으로 나오는 밥은 제외
-- plus: PLUS 코너 (샐러드, 누룽지, 차 등). 샐러드는 무조건 여기
-- ramen_topping: 라면 코너. 각 요일 칸의 라면 이름만 (예: 계란라면, 치즈라면). 공통 안내 행 무시
-- simple: 간편식 코너 전체 (샌드위치, 주스, 바나나, 선식, 두유 등 전부 쉼표로 구분. 라면/샐러드 절대 금지)
-- "저염데이", "분식데이", "오늘은 ~DAY" 같은 이벤트 표기는 무시하고 실제 요리 이름만 분류하세요
+- side: 반찬 여러개 쉼표 구분 ("쌀밥" 두 글자만 제외)
 
-메뉴가 없는 날은 해당 날짜를 포함하지 마세요.
-형식: {"날짜키":{"main":"","soup":"","side":"","plus":"","ramen_topping":"","simple":""},...}`;
+무시할 것: 여러 요일 공통 안내행(토핑라면 종류 등), 원산지 표기, 하단 주석
+"저염데이" 등 이벤트 표기 무시. 메뉴 불명확해도 최대한 7일치 모두 포함.
+형식: {"날짜키":{"main":"","soup":"","side":""},...}`;
 
   try {
-    const parts = [];
-    if (isImg) parts.push({ inline_data: { mime_type: aiImageMime, data: aiImageBase64 } });
-    const prompt = aiMode === 'week' ? weekPrompt : singlePrompt;
-    parts.push({ text: isImg ? prompt : prompt + '\n\n메뉴 텍스트:\n' + txt });
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
-      { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({contents:[{parts}]}) }
-    );
+    const userContent = [];
+    if (isImg) userContent.push({ type: 'image', source: { type: 'base64', media_type: aiImageMime, data: aiImageBase64 } });
+    const promptText = (aiMode === 'week' ? weekPrompt : singlePrompt) + (!isImg ? '\n\n메뉴 텍스트:\n' + txt : '');
+    userContent.push({ type: 'text', text: promptText });
+
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({ model: 'claude-haiku-4-5', max_tokens: 1024, messages: [{ role: 'user', content: userContent }] })
+    });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error?.message || '오류');
-    let raw = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    raw = raw.replace(/```json|```/g,'').trim();
+    let raw = data.content?.[0]?.text || '';
+    raw = raw.replace(/```json|```/g, '').trim();
     const parsed = JSON.parse(raw);
-    // 치환 규칙 적용
+
     function applyToMenu(menu) {
       const result = {};
-      Object.entries(menu).forEach(([k,v]) => { result[k] = v ? applyReplaceRules(v) : v; });
+      Object.entries(menu).forEach(([k, v]) => { result[k] = v ? applyReplaceRules(v) : v; });
       return result;
     }
+
     const processedParsed = aiMode === 'week'
       ? Object.fromEntries(Object.entries(parsed).map(([dk, menu]) => [dk, applyToMenu(menu)]))
       : applyToMenu(parsed);
@@ -1356,18 +1414,16 @@ ${dates.map(d => `"${dateKey(d)}" (${DAYS[d.getDay()]}요일 ${d.getMonth()+1}/$
       const html = Object.entries(processedParsed).map(([dk, menu]) => {
         const d = dates.find(d => dateKey(d) === dk);
         const dayLabel = d ? `${DAYS[d.getDay()]}요일 ${d.getMonth()+1}/${d.getDate()}` : dk;
-        const rows = Object.entries(menu).filter(([,v])=>v).map(([k,v])=>
-          renderAiResultRow(k, v)
-        ).join('');
+        const rows = Object.entries(menu).filter(([, v]) => v).map(([k, v]) => renderAiResultRow(k, v)).join('');
         return `<div style="margin-bottom:10px;"><div style="font-size:11px;font-weight:800;color:var(--accent);margin-bottom:4px;">${dayLabel}</div>${rows}</div>`;
       }).join('') || '<div style="font-size:13px;color:var(--muted);">메뉴를 찾지 못했어요 😥</div>';
       resultEl.innerHTML = html;
     } else {
-      resultEl.innerHTML = Object.entries(processedParsed).filter(([,v])=>v).map(([k,v])=>
-        renderAiResultRow(k, v)
-      ).join('') || '<div style="font-size:13px;color:var(--muted);">메뉴를 찾지 못했어요 😥</div>';
+      resultEl.innerHTML = Object.entries(processedParsed).filter(([, v]) => v).map(([k, v]) => renderAiResultRow(k, v)).join('')
+        || '<div style="font-size:13px;color:var(--muted);">메뉴를 찾지 못했어요 😥</div>';
     }
-    resultEl.style.display = 'block'; statusEl.style.display = 'none';
+    resultEl.style.display = 'block';
+    statusEl.style.display = 'none';
     document.getElementById('ai-apply-btn').style.display = Object.keys(processedParsed).length ? '' : 'none';
     document.getElementById('ai-apply-btn').textContent = aiMode === 'week' ? `${Object.keys(processedParsed).length}일치 전체 등록` : '등록';
   } catch(err) { statusEl.textContent = '❌ 오류: ' + err.message; }
@@ -1377,19 +1433,24 @@ async function applyAiResult() {
   if (!aiParsedResult) return;
   closeAiModal(); showLoading();
   if (aiMode === 'week') {
+    const dates = getWeekDates(aiWeekOffset);
     for (const [dk, menu] of Object.entries(aiParsedResult)) {
+      const d = dates.find(d => dateKey(d) === dk);
       const existing = await getMenu(dk);
-      Object.entries(menu).forEach(([k,v]) => { if (v) { existing[k]=v; } });
+      const merged = { ...existing, ...Object.fromEntries(Object.entries(menu).filter(([, v]) => v)) };
+      const withPatterns = d ? applyPatterns(d, merged) : merged;
       invalidateCache(dk);
-      await saveMenu(dk, existing);
+      await saveMenu(dk, withPatterns);
     }
   } else {
     const dates = getWeekDates(weekOffset);
-    const key = dateKey(dates[selectedDayOffset]);
+    const d = dates[selectedDayOffset];
+    const key = dateKey(d);
     const menu = await getMenu(key);
-    Object.entries(aiParsedResult).forEach(([k,v]) => { if (v) { menu[k]=v; } });
+    Object.entries(aiParsedResult).forEach(([k, v]) => { if (v) menu[k] = v; });
+    const withPatterns = applyPatterns(d, menu);
     invalidateCache(key);
-    await saveMenu(key, menu);
+    await saveMenu(key, withPatterns);
   }
   await render();
 }
@@ -1404,8 +1465,6 @@ function openResetConfirm() {
   document.getElementById('reset-week-range').textContent = `${fmt(dates[0])} ~ ${fmt(dates[6])}`;
   document.getElementById('reset-overlay').classList.add('open');
 }
-function closeReset() { document.getElementById('reset-overlay').classList.remove('open'); }
-function closeResetIfOutside(e) { if (e.target===document.getElementById('reset-overlay')) closeReset(); }
 async function confirmReset() {
   const dates = getWeekDates(weekOffset);
   invalidateWeekCache(dates);
