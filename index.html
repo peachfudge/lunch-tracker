@@ -1217,7 +1217,7 @@ const DEFAULT_PATTERNS = {
   ramen_topping: {
     0: '만두라면',   // 일
     1: '계란라면',   // 월
-    2: '콩나물라면', // 화
+    2: '만두라면',   // 화
     3: '계란라면',   // 수
     4: '치즈라면',   // 목
     5: '떡라면',     // 금
@@ -1364,7 +1364,8 @@ async function runAiAnalyze() {
 - soup: 국/찌개/탕 1가지만. 반드시 별도 필드로 분리
 - side: 반찬만 쉼표 구분. "쌀밥" 두 글자만 제외. 국/찌개/탕은 절대 여기 넣지 말 것
 
-"저염데이" 같은 이벤트 표기는 무시하고 실제 요리 이름만. 없으면 빈 문자열.
+해당 항목이 없으면 "없음" 같은 텍스트 금지, 반드시 빈 문자열("")로.
+"저염데이" 같은 이벤트 표기는 무시하고 실제 요리 이름만.
 형식: {"main":"","soup":"","side":""}`;
 
   const dates = getWeekDates(aiWeekOffset);
@@ -1381,6 +1382,7 @@ ${monToSun.map(d => `"${dateKey(d)}" (${DAYS[d.getDay()]}요일 ${d.getMonth()+1
 
 무시할 것: 여러 요일 공통 안내행(토핑라면 종류 등), 원산지 표기, 하단 주석
 "저염데이" 등 이벤트 표기 무시. 메뉴 불명확해도 최대한 7일치 모두 포함.
+해당 항목이 없으면 반드시 빈 문자열("") 사용. "없음", "N/A" 등 절대 금지.
 형식: {"날짜키":{"main":"","soup":"","side":""},...}`;
 
   try {
@@ -1437,8 +1439,9 @@ async function applyAiResult() {
   closeAiModal(); showLoading();
   if (aiMode === 'week') {
     const dates = getWeekDates(aiWeekOffset);
+    const monToSun = [...dates.slice(1), dates[0]];
     for (const [dk, menu] of Object.entries(aiParsedResult)) {
-      const d = dates.find(d => dateKey(d) === dk);
+      const d = monToSun.find(d => dateKey(d) === dk);
       const existing = await getMenu(dk);
       const merged = { ...existing, ...Object.fromEntries(Object.entries(menu).filter(([, v]) => v)) };
       const withPatterns = d ? applyPatterns(d, merged) : merged;
