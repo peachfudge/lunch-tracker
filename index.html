@@ -1362,14 +1362,15 @@ async function runAiAnalyze() {
 
 - main: 메인 요리 1가지 (빨간색/강조 텍스트로 표시된 것. 비빔밥/콩나물밥처럼 밥 자체가 메인인 경우 포함)
 - soup: 국/찌개/탕 1가지만. 반드시 별도 필드로 분리
-- side: 반찬만 쉼표 구분. "쌀밥" 두 글자만 제외. 국/찌개/탕은 절대 여기 넣지 말 것
+- side: 반찬만 쉼표 구분. "쌀밥" 두 글자만 제외. 국/찌개/탕은 절대 여기 넣지 말 것. PLUS 코너(그린샐러드/누룽지/차), 라면 코너, 간편식 코너(샌드위치/주스)는 절대 포함하지 말 것
 
 해당 항목이 없으면 "없음" 같은 텍스트 금지, 반드시 빈 문자열("")로.
 "저염데이" 같은 이벤트 표기는 무시하고 실제 요리 이름만.
 형식: {"main":"","soup":"","side":""}`;
 
   const dates = getWeekDates(aiWeekOffset);
-  const monToSun = [...dates.slice(1), dates[0]]; // 월~일 순서로 재정렬
+  const nextSun = getWeekDates(aiWeekOffset + 1)[0]; // 다음 일~토의 첫날(일요일) = 이번 식단주의 마지막날
+  const monToSun = [...dates.slice(1), nextSun]; // 월~토 + 다음주 일요일 = 식단표 기준 월~일
   const weekPrompt = `구내식당 주간 메뉴표 사진입니다. 요일별로 분류해서 순수 JSON만 응답하세요.
 
 날짜 키는 반드시 아래 목록에서:
@@ -1380,7 +1381,7 @@ ${monToSun.map(d => `"${dateKey(d)}" (${DAYS[d.getDay()]}요일 ${d.getMonth()+1
 - soup: 국/찌개/탕 1가지만 (예: 콩나물국, 김치찌개, 소고기두부탕국). 반드시 별도 필드로 분리
 - side: 반찬만 쉼표 구분. "쌀밥" 두 글자만 제외. 국/찌개/탕은 절대 여기 넣지 말 것
 
-무시할 것: 여러 요일 공통 안내행(토핑라면 종류 등), 원산지 표기, 하단 주석
+무시할 것: PLUS 코너(그린샐러드/누룽지/차 등), 라면 코너, 간편식 코너(샌드위치/주스 등) - 이 셀들은 side에 절대 포함하지 말 것. 여러 요일 공통 안내행(토핑라면 종류 등), 원산지 표기, 하단 주석도 무시.
 "저염데이" 등 이벤트 표기 무시. 메뉴 불명확해도 최대한 7일치 모두 포함.
 해당 항목이 없으면 반드시 빈 문자열("") 사용. "없음", "N/A" 등 절대 금지.
 형식: {"날짜키":{"main":"","soup":"","side":""},...}`;
@@ -1439,7 +1440,8 @@ async function applyAiResult() {
   closeAiModal(); showLoading();
   if (aiMode === 'week') {
     const dates = getWeekDates(aiWeekOffset);
-    const monToSun = [...dates.slice(1), dates[0]];
+    const nextSun = getWeekDates(aiWeekOffset + 1)[0];
+    const monToSun = [...dates.slice(1), nextSun];
     for (const [dk, menu] of Object.entries(aiParsedResult)) {
       const d = monToSun.find(d => dateKey(d) === dk);
       const existing = await getMenu(dk);
